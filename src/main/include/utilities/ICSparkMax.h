@@ -213,11 +213,6 @@ class ICSparkMax : public rev::CANSparkMax, wpi::Sendable {
   void SetPIDFF(double P, double I, double D, double FF = 0.0);
 
   /**
-   * Set the position of the encoder.
-   */
-  void SetEncoderPosition(Position_t position);
-
-  /**
    * Set the min amd max output for the closed loop mode.
    *
    * This uses the Set Parameter API and should be used infrequently. The parameter does not presist
@@ -268,6 +263,20 @@ class ICSparkMax : public rev::CANSparkMax, wpi::Sendable {
   void SetClosedLoopControlType(rev::CANSparkMax::ControlType controlType) {
     SetInternalControlType(controlType);
   }
+
+  /**
+   * Check whether the motor is on its position target, within a given tolerance.
+   * 
+   * @param tolerance The tolerance to be considered on target
+   */
+  bool OnPosTarget(Position_t tolerance) { return units::math::abs(GetPosError()) < tolerance; }
+
+  /**
+   * Check whether the motor is on its velocity target, within a given tolerance.
+   * 
+   * @param tolerance The tolerance to be considered on target
+   */  
+  bool OnVelTarget(Velocity_t tolerance) { return units::math::abs(GetVelError()) < tolerance; }
 
   // Sendable setup, called automatically when this is passed into smartDashbaord::PutData()
   void InitSendable(wpi::SendableBuilder& builder) override;
@@ -333,5 +342,5 @@ class ICSparkMax : public rev::CANSparkMax, wpi::Sendable {
 
 };
 
-#include "ICSparkMax.tpp"
+#include "ICSparkMax.cpp"
 
