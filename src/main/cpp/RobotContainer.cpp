@@ -5,12 +5,22 @@
 #include "RobotContainer.h"
 
 #include <frc2/command/Commands.h>
+#include <subsystems/Arm.h>
 
 RobotContainer::RobotContainer() {
+  // Init subsystems
+  Arm::GetInstance();
+
   ConfigureBindings();
 }
 
-void RobotContainer::ConfigureBindings() {}
+void RobotContainer::ConfigureBindings() {
+  _controller.B().WhileTrue(Arm::GetInstance().DriveToCoords(Arm::SUBSTATION));
+  _controller.Y().OnTrue(Arm::GetInstance().DriveToCoords(Arm::HI));
+
+
+
+}
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
   return frc2::cmd::Print("No autonomous command configured");
