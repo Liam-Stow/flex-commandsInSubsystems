@@ -40,7 +40,7 @@ frc2::CommandPtr Arm::DriveToAngles(units::radian_t bottomAngle, units::radian_t
            _topMotor.SetSmartMotionTarget(topAngle);
            _bottomMotor.SetSmartMotionTarget(bottomAngle);
          })
-      .AndThen(frc2::cmd::WaitUntil([] { return OnTarget(); }));
+      .AndThen(frc2::cmd::WaitUntil([this] { return OnTarget(); }));
 }
 
 frc2::CommandPtr Arm::DriveToCoords(units::meter_t x, units::meter_t y) {
@@ -49,6 +49,10 @@ frc2::CommandPtr Arm::DriveToCoords(units::meter_t x, units::meter_t y) {
     return DriveToAngles(angles.value().bottomAngle, angles.value().topAngle);
   }
   return frc2::cmd::None();
+}
+
+frc2::CommandPtr Arm::DriveToCoords(frc::Translation2d coord) {
+  return DriveToCoords(coord.X(), coord.Y());
 }
 
 std::optional<Arm::Angles> Arm::CoordsToAngles(units::meter_t x, units::meter_t y) {
@@ -93,8 +97,4 @@ frc2::CommandPtr Arm::DriveBottomAt(double power) {
 
 frc2::CommandPtr Arm::ToPreScore() {
   return DriveToCoords(50_cm, 110_cm).Until([&] { return GetEndEffectorPosition().Y() > 70_cm; });
-}
-
-frc2::CommandPtr Arm::ToHighCone() {
-  return 
 }

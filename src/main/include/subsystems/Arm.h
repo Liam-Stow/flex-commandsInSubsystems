@@ -30,15 +30,6 @@ class Arm : public frc2::SubsystemBase {
     units::radian_t topAngle;
   };
 
-  static constexpr frc::Translation2d HIGH_CONE{125_cm, 124_cm};
-  static constexpr frc::Translation2d MID_CONE{95.5_cm, 74.3_cm};
-  static constexpr frc::Translation2d HIGH_CUBE{146.8_cm, 98_cm};
-  static constexpr frc::Translation2d MID_CUBE{104.4_cm, 52.1_cm};
-  static constexpr frc::Translation2d LOW_HYBRID{45_cm, 15_cm};
-  static constexpr frc::Translation2d SUBSTATION{0.533_m, 0.847_m};
-  static constexpr frc::Translation2d PRE_SCORE{50_cm, 110_cm};
-  static constexpr frc::Translation2d DEFAULT{44_cm, 4_cm};
-
   void Periodic() override;
   void SimulationPeriodic() override;
 
@@ -50,18 +41,17 @@ class Arm : public frc2::SubsystemBase {
   units::radian_t GetGroundToTopArmAngle();
 
   // Commands
-  frc2::CommandPtr DriveToCoords(frc::Translation2d coord) {return DriveToCoords(coord.X(), coord.Y());};
+  frc2::CommandPtr DriveToCoords(frc::Translation2d coord);
   frc2::CommandPtr DriveToCoords(units::meter_t x, units::meter_t y);
   frc2::CommandPtr DriveToAngles(units::radian_t bottomAngle, units::radian_t topAngle);
-  frc2::CommandPtr DriveBottomAt(double power);
-  frc2::CommandPtr ToHighCone();
-  frc2::CommandPtr ToHighCube();
-  frc2::CommandPtr ToMidCube();
-  frc2::CommandPtr ToMidCube();
-  frc2::CommandPtr ToLowHybrid();
-  frc2::CommandPtr ToSubstation();
+  frc2::CommandPtr ToHighCone() { return DriveToCoords(125_cm, 124_cm); }
+  frc2::CommandPtr ToHighCube() { return DriveToCoords(146.8_cm, 98_cm); }
+  frc2::CommandPtr ToMidCone() { return DriveToCoords(95.5_cm, 74.3_cm); }
+  frc2::CommandPtr ToMidCube() { return DriveToCoords(104.4_cm, 52.1_cm); }
+  frc2::CommandPtr ToLowHybrid() { return DriveToCoords(45_cm, 15_cm); }
+  frc2::CommandPtr ToSubstation() { return DriveToCoords(0.533_m, 0.847_m); }
+  frc2::CommandPtr ToDefault() { return DriveToCoords(44_cm, 4_cm); }
   frc2::CommandPtr ToPreScore();
-  frc2::CommandPtr ToDefault();
 
  private:
   Arm();
