@@ -2,38 +2,25 @@
 #include <frc2/command/Commands.h>
 
 Arm::Arm() {
-  frc::SmartDashboard::PutData("Arm/bottom motor", (wpi::Sendable*)&_bottomMotor);
   _bottomMotor.SetConversionFactor(1 / BOTTOM_GEAR_RATIO);
   _bottomMotor.SetPIDFF(BOTTOM_P, BOTTOM_I, BOTTOM_D, BOTTOM_F);
   _bottomMotor.ConfigSmartMotion(BOTTOM_MAX_VEL, BOTTOM_MAX_ACCEL, BOTTOM_TOLERANCE);
+  _bottomFollower.Follow(_bottomMotor);
+  frc::SmartDashboard::PutData("Arm/bottom motor", (wpi::Sendable*)&_bottomMotor);
 
-  frc::SmartDashboard::PutData("Arm/top motor", (wpi::Sendable*)&_topMotor);
   _topMotor.SetConversionFactor(1 / TOP_GEAR_RATIO);
   _topMotor.SetPIDFF(TOP_P, TOP_I, TOP_D, TOP_F);
   _topMotor.ConfigSmartMotion(TOP_MAX_VEL, TOP_MAX_ACCEL, TOP_TOLERANCE);
+  _topMotor.SetInverted(true);
+  _topFollower.Follow(_topMotor);
+  frc::SmartDashboard::PutData("Arm/top motor", (wpi::Sendable*)&_topMotor);
 
   frc::SmartDashboard::PutData("Arm/Mechanism Display", &_doubleJointedArmMech);
-  frc::SmartDashboard::PutNumber("Arm/y coord input", 0);
-  frc::SmartDashboard::PutNumber("Arm/x coord input", 0);
-
-  _topMotor.SetInverted(true);
-  _bottomFollower.Follow(_bottomMotor);
-  _topFollower.Follow(_topMotor);
-
-  _bottomSensor.OnTrue(RunOnce([this] { SetBottomAngle(BOTTOM_LIMIT_ANGLE); }));
 };
 
 void Arm::Periodic() {}
 
 void Arm::SimulationPeriodic() {}
-
-bool Arm::LocatingSwitchIsHit() {
-  return !_bottomSensor.Get();
-}
-
-void Arm::SetBottomAngle(units::radian_t angle) {
-  _bottomMotor.SetPosition(angle);
-}
 
 frc2::CommandPtr Arm::DriveToAngles(units::radian_t bottomAngle, units::radian_t topAngle) {
   return RunOnce([&] {
@@ -89,10 +76,6 @@ frc::Translation2d Arm::GetEndEffectorPosition() {
 
 bool Arm::OnTarget() {
   return _topMotor.OnPosTarget(1_deg) && _bottomMotor.OnPosTarget(1_deg);
-}
-
-frc2::CommandPtr Arm::DriveBottomAt(double power) {
-  return StartEnd([&] { _bottomMotor.Set(power); }, [&] { _bottomMotor.Set(0); });
 }
 
 frc2::CommandPtr Arm::ToPreScore() {

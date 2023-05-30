@@ -33,9 +33,7 @@ class Arm : public frc2::SubsystemBase {
   void Periodic() override;
   void SimulationPeriodic() override;
 
-  void SetBottomAngle(units::radian_t angle);
   std::optional<Angles> CoordsToAngles(units::meter_t x, units::meter_t y);
-  bool LocatingSwitchIsHit();
   bool OnTarget();
   frc::Translation2d GetEndEffectorPosition();
   units::radian_t GetGroundToTopArmAngle();
@@ -58,7 +56,6 @@ class Arm : public frc2::SubsystemBase {
 
   // Data
   frc::Translation2d _endEffectorTarget{0.5_m, 0.5_m};
-  static constexpr units::degree_t BOTTOM_LIMIT_ANGLE = 124.3_deg;
 
   static constexpr double BOTTOM_GEAR_RATIO = 218.27;
   static constexpr units::kilogram_t BOTTOM_ARM_MASS = 1_kg;
@@ -95,10 +92,6 @@ class Arm : public frc2::SubsystemBase {
   ICSparkMax<> _topMotor{canid::armMotorTop};
   ICSparkMax<> _topFollower{canid::armMotorTopFollow};
   ICSparkMax<> _bottomFollower{canid::armMotorBottomFollow};
-
-  // Sensors
-  DigitalInputTrigger _topSensor{dio::armTopSensor};
-  DigitalInputTrigger _bottomSensor{dio::armBottomSensor};
 
   // Simulation
   frc::sim::SingleJointedArmSim _topArmSim{
