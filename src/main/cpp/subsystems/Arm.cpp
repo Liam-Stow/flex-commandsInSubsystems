@@ -50,6 +50,8 @@ frc2::CommandPtr Arm::DriveToAngles(units::radian_t bottomAngle, units::radian_t
   return RunOnce([this, bottomAngle, topAngle] {
            _topMotor.SetSmartMotionTarget(topAngle);
            _bottomMotor.SetSmartMotionTarget(bottomAngle);
+           _topArmTargetLigament->SetAngle(topAngle);
+           _bottomArmTargetLigament->SetAngle(bottomAngle);
          })
       .AndThen(frc2::cmd::WaitUntil([this] { return OnTarget(); }));
 }

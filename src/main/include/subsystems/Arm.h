@@ -117,10 +117,16 @@ class Arm : public frc2::SubsystemBase {
   };
 
   // Display
+  frc::Color8Bit truePositionColour{243,89,36}; // IC Orange
+  frc::Color8Bit targetPositionColour{255,10,10}; // red
   frc::Mechanism2d _doubleJointedArmMech{3, 3};  // canvas width and height
   frc::MechanismRoot2d* _root = _doubleJointedArmMech.GetRoot("armRoot", 1, 1);  // root x and y
   frc::MechanismLigament2d* _bottomArmLigament = _root->Append<frc::MechanismLigament2d>(
-      "bottomArmligament", BOTTOM_ARM_LENGTH.value(), 5_deg);
+      "bottomArmLigament", BOTTOM_ARM_LENGTH.value(), 5_deg, 6, truePositionColour);
   frc::MechanismLigament2d* _topArmLigament = _bottomArmLigament->Append<frc::MechanismLigament2d>(
-      "topArmLigament", TOP_ARM_LENGTH.value(), 5_deg);
+      "topArmLigament", TOP_ARM_LENGTH.value(), 5_deg, 6, truePositionColour);
+  frc::MechanismLigament2d* _bottomArmTargetLigament = _root->Append<frc::MechanismLigament2d>(
+      "bottomArmTargetLigament", BOTTOM_ARM_LENGTH.value(), 5_deg, 4, targetPositionColour);
+  frc::MechanismLigament2d* _topArmTargetLigament = _bottomArmTargetLigament->Append<frc::MechanismLigament2d>(
+      "topArmTargetLigament", TOP_ARM_LENGTH.value(), 5_deg, 4, targetPositionColour);
 };
