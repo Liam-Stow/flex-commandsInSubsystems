@@ -42,8 +42,8 @@ class Arm : public frc2::SubsystemBase {
   frc2::CommandPtr DriveToCoords(frc::Translation2d coord);
   frc2::CommandPtr DriveToCoords(units::meter_t x, units::meter_t y);
   frc2::CommandPtr DriveToAngles(units::radian_t bottomAngle, units::radian_t topAngle);
-  frc2::CommandPtr ToHighCone() { return DriveToCoords(125_cm, 124_cm); }
-  frc2::CommandPtr ToHighCube() { return DriveToCoords(146.8_cm, 98_cm); }
+  frc2::CommandPtr ToHighCone() { return ToPreScore().AndThen(DriveToCoords(125_cm, 124_cm)); }
+  frc2::CommandPtr ToHighCube() { return ToPreScore().AndThen(DriveToCoords(146.8_cm, 98_cm)); }
   frc2::CommandPtr ToMidCone() { return DriveToCoords(95.5_cm, 74.3_cm); }
   frc2::CommandPtr ToMidCube() { return DriveToCoords(104.4_cm, 52.1_cm); }
   frc2::CommandPtr ToLowHybrid() { return DriveToCoords(45_cm, 15_cm); }
@@ -60,8 +60,8 @@ class Arm : public frc2::SubsystemBase {
 
   static constexpr double BOTTOM_GEAR_RATIO = 218.27;
   static constexpr units::kilogram_t BOTTOM_ARM_MASS = 1_kg;
-  static constexpr units::degrees_per_second_t BOTTOM_MAX_VEL = 18_deg_per_s;
-  static constexpr units::degrees_per_second_squared_t BOTTOM_MAX_ACCEL = 90_deg_per_s_sq;
+  static constexpr units::degrees_per_second_t BOTTOM_MAX_VEL = 50_deg_per_s;
+  static constexpr units::degrees_per_second_squared_t BOTTOM_MAX_ACCEL = 65_deg_per_s_sq;
   static constexpr units::degree_t BOTTOM_TOLERANCE = 0.5_deg;
   static constexpr units::meter_t BOTTOM_ARM_LENGTH = 0.9_m;
   static constexpr units::degree_t BOTTOM_MIN_ANGLE = -180_deg;  // only sim
@@ -69,24 +69,22 @@ class Arm : public frc2::SubsystemBase {
 
   static constexpr double TOP_GEAR_RATIO = 155.91;
   static constexpr units::kilogram_t TOP_ARM_MASS = 1_kg;
-  static constexpr units::degrees_per_second_t TOP_MAX_VEL = 24_deg_per_s;
-  static constexpr units::degrees_per_second_squared_t TOP_MAX_ACCEL = 90_deg_per_s_sq;
+  static constexpr units::degrees_per_second_t TOP_MAX_VEL = 50_deg_per_s;
+  static constexpr units::degrees_per_second_squared_t TOP_MAX_ACCEL = 65_deg_per_s_sq;
   static constexpr units::degree_t TOP_TOLERANCE = 0.5_deg;
   static constexpr units::meter_t TOP_ARM_LENGTH = 1_m;
   static constexpr units::degree_t TOP_MIN_ANGLE = -180_deg;  // only sim
   static constexpr units::degree_t TOP_MAX_ANGLE = 180_deg;   // only sim
 
   // Controllers
-  static constexpr double TOP_P = 0.0;
+  static constexpr double TOP_P = 1.0;
   static constexpr double TOP_I = 0.0;
   static constexpr double TOP_D = 0.0;
-  static constexpr double TOP_F = 15;
-  static constexpr double BOTTOM_P = 0.0;
+  static constexpr double TOP_F = 19.5;
+  static constexpr double BOTTOM_P = 1.0;
   static constexpr double BOTTOM_I = 0.0;
   static constexpr double BOTTOM_D = 0.0;
-  static constexpr double BOTTOM_F = 30;
-  frc::ArmFeedforward _topArmGravityFF{0_V, -0.5_V, 0_V / 1_rad_per_s, 0_V / 1_rad_per_s_sq};
-  frc::ArmFeedforward _bottomArmGravityFF{0_V, 0.5_V, 0_V / 1_rad_per_s, 0_V / 1_rad_per_s_sq};
+  static constexpr double BOTTOM_F = 27;
 
   // Actuators
   ICSparkMax<> _bottomMotor{canid::armBottom};
