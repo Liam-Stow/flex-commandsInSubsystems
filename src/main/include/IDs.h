@@ -2,37 +2,32 @@
 #pragma once
 
 namespace canivore {
-  constexpr int DriveBaseFrontLeftDrive = 7;
-  constexpr int DriveBaseFrontLeftTurn = 8;
-  constexpr int DriveBaseFrontLeftEncoder = 10;
+  constexpr int frontLeftDrive = 7;
+  constexpr int frontLeftTurn = 8;
+  constexpr int frontLeftEncoder = 10;
 
-  constexpr int DriveBaseFrontRightDrive = 5;
-  constexpr int DriveBaseFrontRightTurn = 6;
-  constexpr int DriveBaseFrontRightEncoder = 12;
+  constexpr int frontRightDrive = 5;
+  constexpr int frontRightTurn = 6;
+  constexpr int frontRightEncoder = 12;
 
-  constexpr int DriveBaseBackLeftDrive = 1;
-  constexpr int DriveBaseBackLeftTurn = 2;
-  constexpr int DriveBaseBackLeftEncoder = 11;
+  constexpr int backLeftDrive = 1;
+  constexpr int backLeftTurn = 2;
+  constexpr int backLeftEncoder = 11;
 
-  constexpr int DriveBaseBackRightDrive = 3;
-  constexpr int DriveBaseBackRightTurn = 4;
-  constexpr int DriveBaseBackRightEncoder = 9;
+  constexpr int backRightDrive = 3;
+  constexpr int backRightTurn = 4;
+  constexpr int backRightEncoder = 9;
 }
 
 namespace canid {
-  // Intake id: 01 - 09
-  constexpr int leftMotor = 1;
-  constexpr int rightMotor = 2;
-  constexpr int deployMotor = 3;
-  
   // Arm id: 10 - 19
-  constexpr int armMotorBottom = 10;
-  constexpr int armMotorBottomFollow = 11;
-  constexpr int armMotorTop = 13;
-  constexpr int armMotorTopFollow = 12;
+  constexpr int armBottom = 10;
+  constexpr int armBottomFollow = 11;
+  constexpr int armTop = 13;
+  constexpr int armTopFollow = 12;
 
-  //Claw id: 20-29
-  constexpr int clawMotor1 = 20;
+  //Intake id: 20-29
+  constexpr int intake = 20;
 }
  
 namespace dio {

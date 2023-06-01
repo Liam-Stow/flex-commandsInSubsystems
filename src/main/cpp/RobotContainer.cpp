@@ -5,18 +5,24 @@
 #include "RobotContainer.h"
 
 #include <frc2/command/Commands.h>
-#include <subsystems/Arm.h>
+#include "subsystems/Arm.h"
+#include "subsystems/DriveBase.h"
+#include "utilities/POVHelper.h"
 
 RobotContainer::RobotContainer() {
   // Init subsystems
   Arm::GetInstance();
+  DriveBase::GetInstance();
 
   ConfigureBindings();
+  DriveBase::GetInstance().SetDefaultCommand(DriveBase::GetInstance().XboxDrive(_driverController));
 }
 
 void RobotContainer::ConfigureBindings() {
-  _controller.B().WhileTrue(Arm::GetInstance().DriveToCoords(Arm::SUBSTATION));
-  _controller.Y().OnTrue(Arm::GetInstance().DriveToCoords(Arm::HI));
+   //Main Controller
+  _driverController.Start().OnTrue(DriveBase::GetInstance().ResetGyroHeading());
+  // _driverController.RightBumper().WhileTrue(cmd::RollerOuttake());
+  // _driverController.RightTrigger().WhileTrue(cmd::RollerIntake());
 
 
 
