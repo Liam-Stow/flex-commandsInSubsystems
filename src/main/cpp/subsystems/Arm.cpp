@@ -18,12 +18,36 @@ Arm::Arm() {
   frc::SmartDashboard::PutData("Arm/Mechanism Display", &_doubleJointedArmMech);
 };
 
-void Arm::Periodic() {}
+void Arm::Periodic() {
+  frc::SmartDashboard::PutNumber("Arm/ground to top arm turns", GetGroundToTopArmAngle().value());
 
-void Arm::SimulationPeriodic() {}
+  auto EEPos = GetEndEffectorPosition();
+  frc::SmartDashboard::PutNumber("Arm/Current X", EEPos.X().value());
+  frc::SmartDashboard::PutNumber("Arm/Current Y", EEPos.Y().value());
+
+  // Update mech2d display
+  _bottomArmLigament->SetAngle(_bottomMotor.GetPosition());
+  _topArmLigament->SetAngle(_topMotor.GetPosition());
+}
+
+void Arm::SimulationPeriodic() {
+  _bottomArmSim.SetInputVoltage(_bottomMotor.GetSimVoltage());
+  _bottomArmSim.Update(20_ms);
+
+  _topArmSim.SetInputVoltage(_topMotor.GetSimVoltage());
+  _topArmSim.Update(20_ms);
+
+  auto bottomAngle = _bottomArmSim.GetAngle();
+  auto bottomVel = _bottomArmSim.GetVelocity();
+  _bottomMotor.UpdateSimEncoder(bottomAngle, bottomVel);
+
+  auto topAngle = _topArmSim.GetAngle();
+  auto topVel = _topArmSim.GetVelocity();
+  _topMotor.UpdateSimEncoder(topAngle, topVel);
+}
 
 frc2::CommandPtr Arm::DriveToAngles(units::radian_t bottomAngle, units::radian_t topAngle) {
-  return RunOnce([&] {
+  return RunOnce([this, bottomAngle, topAngle] {
            _topMotor.SetSmartMotionTarget(topAngle);
            _bottomMotor.SetSmartMotionTarget(bottomAngle);
          })
@@ -67,9 +91,9 @@ units::radian_t Arm::GetGroundToTopArmAngle() {
 }
 
 frc::Translation2d Arm::GetEndEffectorPosition() {
-  frc::Rotation2d groundToTop {units::radian_t{GetGroundToTopArmAngle()}};
-  frc::Rotation2d groundToBottom {units::radian_t{_bottomMotor.GetPosition()}};
-  frc::Translation2d topPos {TOP_ARM_LENGTH, groundToTop};
+  frc::Rotation2d groundToTop{units::radian_t{GetGroundToTopArmAngle()}};
+  frc::Rotation2d groundToBottom{units::radian_t{_bottomMotor.GetPosition()}};
+  frc::Translation2d topPos{TOP_ARM_LENGTH, groundToTop};
   frc::Translation2d bottomPos{BOTTOM_ARM_LENGTH, groundToBottom};
   return topPos + bottomPos;
 }

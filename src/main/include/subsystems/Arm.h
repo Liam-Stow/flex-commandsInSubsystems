@@ -47,6 +47,7 @@ class Arm : public frc2::SubsystemBase {
   frc2::CommandPtr ToMidCone() { return DriveToCoords(95.5_cm, 74.3_cm); }
   frc2::CommandPtr ToMidCube() { return DriveToCoords(104.4_cm, 52.1_cm); }
   frc2::CommandPtr ToLowHybrid() { return DriveToCoords(45_cm, 15_cm); }
+  frc2::CommandPtr ToGroundPickup() { return DriveToCoords(0.533_m, 0_m); }
   frc2::CommandPtr ToSubstation() { return DriveToCoords(0.533_m, 0.847_m); }
   frc2::CommandPtr ToDefault() { return DriveToCoords(44_cm, 4_cm); }
   frc2::CommandPtr ToPreScore();
@@ -88,10 +89,10 @@ class Arm : public frc2::SubsystemBase {
   frc::ArmFeedforward _bottomArmGravityFF{0_V, 0.5_V, 0_V / 1_rad_per_s, 0_V / 1_rad_per_s_sq};
 
   // Actuators
-  ICSparkMax<> _bottomMotor{canid::armMotorBottom};
-  ICSparkMax<> _topMotor{canid::armMotorTop};
-  ICSparkMax<> _topFollower{canid::armMotorTopFollow};
-  ICSparkMax<> _bottomFollower{canid::armMotorBottomFollow};
+  ICSparkMax<> _bottomMotor{canid::armBottom};
+  ICSparkMax<> _topMotor{canid::armTop};
+  ICSparkMax<> _topFollower{canid::armTopFollow};
+  ICSparkMax<> _bottomFollower{canid::armBottomFollow};
 
   // Simulation
   frc::sim::SingleJointedArmSim _topArmSim{

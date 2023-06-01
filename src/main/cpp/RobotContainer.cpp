@@ -24,8 +24,18 @@ void RobotContainer::ConfigureBindings() {
   // _driverController.RightBumper().WhileTrue(cmd::RollerOuttake());
   // _driverController.RightTrigger().WhileTrue(cmd::RollerIntake());
 
-
-
+  // //Second controller
+  // POVHelper::Up(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(0, 20));
+  // POVHelper::Down(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(0, -20));
+  // POVHelper::Right(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(20, 0)); //forward
+  // POVHelper::Left(&_secondController).WhileTrue(cArm::GetInstance().ManualArmMove(-20, 0)); //backward
+  _secondController.Y().OnTrue(Arm::GetInstance().ToHighCone());
+  _secondController.B().OnTrue(Arm::GetInstance().ToMidCone());
+  _secondController.A().OnTrue(Arm::GetInstance().ToLowHybrid());
+  _secondController.X().OnTrue(Arm::GetInstance().ToGroundPickup());
+  _secondController.LeftTrigger().OnTrue(Arm::GetInstance().ToSubstation());
+  _secondController.RightTrigger().OnTrue(Arm::GetInstance().ToDefault());
+  // _secondController.RightBumper().WhileTrue(cmd::RollerOuttake());
 }
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
