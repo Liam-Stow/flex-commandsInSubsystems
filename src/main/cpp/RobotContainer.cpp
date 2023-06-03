@@ -7,12 +7,14 @@
 #include <frc2/command/Commands.h>
 #include "subsystems/Arm.h"
 #include "subsystems/DriveBase.h"
+#include "subsystems/Intake.h"
 #include "utilities/POVHelper.h"
 
 RobotContainer::RobotContainer() {
   // Init subsystems
   Arm::GetInstance();
   DriveBase::GetInstance();
+  Intake::GetInstance();
 
   ConfigureBindings();
   DriveBase::GetInstance().SetDefaultCommand(DriveBase::GetInstance().XboxDrive(_driverController));
@@ -21,8 +23,8 @@ RobotContainer::RobotContainer() {
 void RobotContainer::ConfigureBindings() {
    //Main Controller
   _driverController.Start().OnTrue(DriveBase::GetInstance().ResetGyroHeading());
-  // _driverController.RightBumper().WhileTrue(cmd::RollerOuttake());
-  // _driverController.RightTrigger().WhileTrue(cmd::RollerIntake());
+  _driverController.RightBumper().WhileTrue(Intake::GetInstance().Spit());
+  _driverController.RightTrigger().WhileTrue(Intake::GetInstance().Suck());
 
   // //Second controller
   // POVHelper::Up(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(0, 20));
@@ -35,7 +37,6 @@ void RobotContainer::ConfigureBindings() {
   _secondController.X().OnTrue(Arm::GetInstance().ToGroundPickup());
   _secondController.LeftTrigger().OnTrue(Arm::GetInstance().ToSubstation());
   _secondController.RightTrigger().OnTrue(Arm::GetInstance().ToDefault());
-  // _secondController.RightBumper().WhileTrue(cmd::RollerOuttake());
 }
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {

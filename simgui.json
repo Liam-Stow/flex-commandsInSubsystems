@@ -13,7 +13,8 @@
       "/LiveWindow/Ungrouped/class frc2::SubsystemBase": "Subsystem",
       "/LiveWindow/Ungrouped/navX-Sensor[1]": "Gyro",
       "/SmartDashboard/Arm/Mechanism Display": "Mechanism2d",
-      "/SmartDashboard/field": "Field2d"
+      "/SmartDashboard/field": "Field2d",
+      "/SmartDashboard/intake/mech": "Mechanism2d"
     },
     "windows": {
       "/SmartDashboard/Arm/Mechanism Display": {
@@ -22,6 +23,11 @@
         }
       },
       "/SmartDashboard/field": {
+        "window": {
+          "visible": true
+        }
+      },
+      "/SmartDashboard/intake/mech": {
         "window": {
           "visible": true
         }
@@ -35,10 +41,15 @@
           "bottom motor": {
             "open": true
           },
-          "open": true,
           "top motor": {
             "open": true
           }
+        },
+        "intake": {
+          "motor": {
+            "open": true
+          },
+          "open": true
         },
         "open": true
       }
