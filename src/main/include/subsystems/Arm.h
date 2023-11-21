@@ -42,15 +42,16 @@ class Arm : public frc2::SubsystemBase {
   frc2::CommandPtr DriveToCoords(frc::Translation2d coord);
   frc2::CommandPtr DriveToCoords(units::meter_t x, units::meter_t y);
   frc2::CommandPtr DriveToAngles(units::radian_t bottomAngle, units::radian_t topAngle);
-  frc2::CommandPtr ToHighCone() { return ToPreScore().AndThen(DriveToCoords(125_cm, 124_cm)); }
-  frc2::CommandPtr ToHighCube() { return ToPreScore().AndThen(DriveToCoords(146.8_cm, 98_cm)); }
-  frc2::CommandPtr ToMidCone() { return DriveToCoords(95.5_cm, 74.3_cm); }
-  frc2::CommandPtr ToMidCube() { return DriveToCoords(104.4_cm, 52.1_cm); }
+  frc2::CommandPtr ToHigh() { return ToPreScore().AndThen(DriveToCoords(125_cm, 124_cm)); }
+  frc2::CommandPtr ToScoredHigh() { return DriveToCoords(125_cm, 110_cm); }
+  frc2::CommandPtr ToMid() { return DriveToCoords(95.5_cm, 74.3_cm); }
+  frc2::CommandPtr ToScoredMid() { return DriveToCoords(95.5_cm, 60_cm); }
   frc2::CommandPtr ToLowHybrid() { return DriveToCoords(45_cm, 15_cm); }
   frc2::CommandPtr ToGroundPickup() { return DriveToCoords(0.533_m, 0_m); }
   frc2::CommandPtr ToSubstation() { return DriveToCoords(0.533_m, 0.847_m); }
   frc2::CommandPtr ToDefault() { return DriveToCoords(44_cm, 4_cm); }
   frc2::CommandPtr ToPreScore();
+  frc2::CommandPtr ScoreAtCurrentHeight();
 
  private:
   Arm();

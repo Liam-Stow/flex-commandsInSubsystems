@@ -59,7 +59,10 @@ frc2::CommandPtr Arm::DriveToAngles(units::radian_t bottomAngle, units::radian_t
 frc2::CommandPtr Arm::DriveToCoords(units::meter_t x, units::meter_t y) {
   auto angles = CoordsToAngles(x, y);
   if (angles.has_value()) {
-    return DriveToAngles(angles.value().bottomAngle, angles.value().topAngle);
+    return DriveToAngles(angles.value().bottomAngle, angles.value().topAngle)
+        .AlongWith(frc2::cmd::RunOnce([this, x, y] {
+          _endEffectorTarget = {x, y};
+        }));
   }
   return frc2::cmd::None();
 }
@@ -106,4 +109,10 @@ bool Arm::OnTarget() {
 
 frc2::CommandPtr Arm::ToPreScore() {
   return DriveToCoords(50_cm, 110_cm).Until([&] { return GetEndEffectorPosition().Y() > 70_cm; });
+}
+
+frc2::CommandPtr Arm::ScoreAtCurrentHeight() {
+  return frc2::cmd::Either(ToScoredHigh(), ToScoredMid(), [this] {
+    return GetEndEffectorPosition().Y() > 100_cm;
+  });
 }

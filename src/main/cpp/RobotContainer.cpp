@@ -21,18 +21,29 @@ RobotContainer::RobotContainer() {
 }
 
 void RobotContainer::ConfigureBindings() {
-   //Main Controller
+  // Main Controller
   _driverController.Start().OnTrue(DriveBase::GetInstance().ResetGyroHeading());
   _driverController.RightBumper().WhileTrue(Intake::GetInstance().Spit());
   _driverController.RightTrigger().WhileTrue(Intake::GetInstance().Suck());
+  _driverController.LeftBumper().WhileTrue(
+      Arm::GetInstance()
+          .ScoreAtCurrentHeight()
+          .AndThen(Intake::GetInstance().Spit())
+          .AlongWith(DriveBase::GetInstance()
+                         .Drive(
+                             [] {
+                               return frc::ChassisSpeeds{0_mps, -1_mps, 0_deg_per_s};
+                             },
+                             false)
+                         .WithTimeout(0.7_s)));
 
-  // //Second controller
+  // Second controller
   // POVHelper::Up(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(0, 20));
   // POVHelper::Down(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(0, -20));
-  // POVHelper::Right(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(20, 0)); //forward
-  // POVHelper::Left(&_secondController).WhileTrue(cArm::GetInstance().ManualArmMove(-20, 0)); //backward
-  _secondController.Y().OnTrue(Arm::GetInstance().ToHighCone());
-  _secondController.B().OnTrue(Arm::GetInstance().ToMidCone());
+  // POVHelper::Right(&_secondController).WhileTrue(Arm::GetInstance().ManualArmMove(20, 0));
+  // POVHelper::Left(&_secondController).WhileTrue(cArm::GetInstance().ManualArmMove(-20, 0));
+  _secondController.Y().OnTrue(Arm::GetInstance().ToHigh());
+  _secondController.B().OnTrue(Arm::GetInstance().ToMid());
   _secondController.A().OnTrue(Arm::GetInstance().ToLowHybrid());
   _secondController.X().OnTrue(Arm::GetInstance().ToGroundPickup());
   _secondController.LeftTrigger().OnTrue(Arm::GetInstance().ToSubstation());
