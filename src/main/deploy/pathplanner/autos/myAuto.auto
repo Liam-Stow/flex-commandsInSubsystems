@@ -1,0 +1,30 @@
+{
+  "version": 1.0,
+  "startingPose": null,
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "myAutoPath1"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "armToHigh"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "myAutoPath2"
+          }
+        }
+      ]
+    }
+  },
+  "folder": null
+}

@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 #include "RobotContainer.h"
 
 #include <frc2/command/Commands.h>
@@ -9,6 +5,8 @@
 #include "subsystems/DriveBase.h"
 #include "subsystems/Intake.h"
 #include "utilities/POVHelper.h"
+#include <pathplanner/lib/auto/AutoBuilder.h>
+#include <pathplanner/lib/auto/NamedCommands.h>
 
 RobotContainer::RobotContainer() {
   // Init subsystems
@@ -16,6 +14,14 @@ RobotContainer::RobotContainer() {
   DriveBase::GetInstance();
   Intake::GetInstance();
 
+  // Setup named commands for pathplanner autos
+  pathplanner::NamedCommands::registerCommand("armToHigh", Arm::GetInstance().ToHigh());
+  pathplanner::NamedCommands::registerCommand("armToDefault", Arm::GetInstance().ToDefault());
+  pathplanner::NamedCommands::registerCommand("armToScore",
+                                              Arm::GetInstance().ScoreAtCurrentHeight());
+  pathplanner::NamedCommands::registerCommand("spit", Intake::GetInstance().Spit());
+
+  // Config command bindings
   ConfigureBindings();
   DriveBase::GetInstance().SetDefaultCommand(DriveBase::GetInstance().XboxDrive(_driverController));
 }
@@ -30,7 +36,7 @@ void RobotContainer::ConfigureBindings() {
           .ScoreAtCurrentHeight()
           .AndThen(Intake::GetInstance().Spit())
           .AlongWith(DriveBase::GetInstance()
-                         .Drive(
+                         .DriveCmd(
                              [] {
                                return frc::ChassisSpeeds{0_mps, -1_mps, 0_deg_per_s};
                              },
@@ -51,5 +57,5 @@ void RobotContainer::ConfigureBindings() {
 }
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
-  return frc2::cmd::Print("No autonomous command configured");
+  return pathplanner::AutoBuilder::buildAuto("myAuto");
 }

@@ -11,6 +11,9 @@
 #include <units/dimensionless.h>
 #include <frc/filter/SlewRateLimiter.h>
 #include <frc/MathUtil.h>
+#include <pathplanner/lib/auto/AutoBuilder.h>
+#include <pathplanner/lib/util/HolonomicPathFollowerConfig.h>
+#include <pathplanner/lib/util/PIDConstants.h>
 
 DriveBase::DriveBase() {
   _gyro.Calibrate();
@@ -19,6 +22,20 @@ DriveBase::DriveBase() {
 
   // Dashboard Displays
   frc::SmartDashboard::PutData("field", &_fieldDisplay);
+
+  // Pathplanner auto driving config
+  pathplanner::AutoBuilder::configureHolonomic(
+      [this] { return GetPose(); }, [this](auto pose) { SetPose(pose); },
+      [this] { return GetRobotRelativeSpeeds(); },
+      [this](auto outputSpeeds) { Drive(outputSpeeds, false); },
+      pathplanner::HolonomicPathFollowerConfig{
+          pathplanner::PIDConstants(5.0, 0.0, 0.0),  // Translation PID constants
+          pathplanner::PIDConstants(5.0, 0.0, 0.0),  // Rotation PID constants
+          4.5_mps,                                   // Max module speed
+          0.4_m,                           // Distance from robot center to furthest module
+          pathplanner::ReplanningConfig()  // Default path replanning config
+      },
+      this);
 }
 
 void DriveBase::Periodic() {
@@ -43,47 +60,50 @@ void DriveBase::Periodic() {
   UpdateOdometry();
 }
 
-frc2::CommandPtr DriveBase::Drive(std::function<frc::ChassisSpeeds()> speedsSupplier,
-                                  bool fieldRelative) {
-  return Run([this, speedsSupplier, fieldRelative] {
-    // Calculate desired states of all swerve modules
-    auto states = _kinematics.ToSwerveModuleStates(
-        fieldRelative ? frc::ChassisSpeeds::FromFieldRelativeSpeeds(speedsSupplier(), GetHeading())
-                      : frc::ChassisSpeeds{speedsSupplier()});
+void DriveBase::Drive(frc::ChassisSpeeds speeds, bool fieldRelative) {
+  // Calculate desired states of all swerve modules
+  auto states = _kinematics.ToSwerveModuleStates(
+      fieldRelative ? frc::ChassisSpeeds::FromFieldRelativeSpeeds(speeds, GetHeading())
+                    : frc::ChassisSpeeds{speeds});
 
-    // Apply speed limit to all modules
-    _kinematics.DesaturateWheelSpeeds(&states, MAX_VELOCITY);
-    auto [fl, fr, bl, br] = states;
+  // Apply speed limit to all modules
+  _kinematics.DesaturateWheelSpeeds(&states, MAX_VELOCITY);
+  auto [fl, fr, bl, br] = states;
 
-    // Dashboard Displays
-    frc::SmartDashboard::PutNumberArray("drivebase/desired swerve states",
-                                        std::array{
-                                            fl.angle.Degrees().value(),
-                                            fl.speed.value(),
-                                            fr.angle.Degrees().value(),
-                                            fr.speed.value(),
-                                            bl.angle.Degrees().value(),
-                                            bl.speed.value(),
-                                            br.angle.Degrees().value(),
-                                            br.speed.value(),
-                                        });
+  // Dashboard Displays
+  frc::SmartDashboard::PutNumberArray("drivebase/desired swerve states",
+                                      std::array{
+                                          fl.angle.Degrees().value(),
+                                          fl.speed.value(),
+                                          fr.angle.Degrees().value(),
+                                          fr.speed.value(),
+                                          bl.angle.Degrees().value(),
+                                          bl.speed.value(),
+                                          br.angle.Degrees().value(),
+                                          br.speed.value(),
+                                      });
 
-    _frontLeft.SetDesiredState(fl);
-    _frontRight.SetDesiredState(fr);
-    _backLeft.SetDesiredState(bl);
-    _backRight.SetDesiredState(br);
+  // Drive! Send reqeusts to swerve modules
+  _frontLeft.SetDesiredState(fl);
+  _frontRight.SetDesiredState(fr);
+  _backLeft.SetDesiredState(bl);
+  _backRight.SetDesiredState(br);
 
-    // Force gyro changes in sim
-    if (frc::RobotBase::IsSimulation()) {
-      units::radian_t radPer20ms = speedsSupplier().omega * 20_ms;
-      units::degree_t newHeading = GetHeading().RotateBy(radPer20ms).Degrees();
-      _gyro.SetAngleAdjustment(-newHeading.value());  // negative to switch to CW from CCW
-    }
-  });
+  // Force gyro changes in sim
+  if (frc::RobotBase::IsSimulation()) {
+    units::radian_t radPer20ms = speeds.omega * 20_ms;
+    units::degree_t newHeading = GetHeading().RotateBy(radPer20ms).Degrees();
+    _gyro.SetAngleAdjustment(-newHeading.value());  // negative to switch to CW from CCW
+  }
+}
+
+frc2::CommandPtr DriveBase::DriveCmd(std::function<frc::ChassisSpeeds()> speedsSupplier,
+                                     bool fieldRelative) {
+  return Run([this, speedsSupplier, fieldRelative] { Drive(speedsSupplier(), fieldRelative); });
 }
 
 frc2::CommandPtr DriveBase::XboxDrive(frc2::CommandXboxController& controller) {
-  return Drive(
+  return DriveCmd(
       [&controller] {
         static frc::SlewRateLimiter<units::scalar> xLimiter{3 / 1_s};
         static frc::SlewRateLimiter<units::scalar> yLimiter{3 / 1_s};
@@ -98,13 +118,11 @@ frc2::CommandPtr DriveBase::XboxDrive(frc2::CommandXboxController& controller) {
       true);
 }
 
-// Syncs encoder values when the robot is turned on
 void DriveBase::SyncSensors() {
   _frontLeft.SyncSensors();
   _frontRight.SyncSensors();
   _backLeft.SyncSensors();
   _backRight.SyncSensors();
-  _gyro.Calibrate();
 }
 
 frc::Rotation2d DriveBase::GetHeading() {
@@ -115,6 +133,14 @@ units::meters_per_second_t DriveBase::GetVelocity() {
   auto robotDisplacement =
       _prevPose.Translation().Distance(_poseEstimator.GetEstimatedPosition().Translation());
   return units::meters_per_second_t{robotDisplacement / 20_ms};
+}
+
+frc::ChassisSpeeds DriveBase::GetRobotRelativeSpeeds() {
+  auto fl = _frontLeft.GetState();
+  auto fr = _frontRight.GetState();
+  auto bl = _backLeft.GetState();
+  auto br = _backRight.GetState();
+  return _kinematics.ToChassisSpeeds(fl, fr, bl, br);
 }
 
 void DriveBase::UpdateOdometry() {
@@ -154,7 +180,7 @@ frc2::CommandPtr DriveBase::DriveToPose(frc::Pose2d targetPose) {
     return frc::ChassisSpeeds{speedX * 1_mps, speedY * 1_mps, speedRot * 1_rad_per_s};
   };
 
-  return Drive(calcSpeeds, true);
+  return DriveCmd(calcSpeeds, true);
 }
 
 bool DriveBase::IsAtPose(frc::Pose2d pose) {

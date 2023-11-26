@@ -27,6 +27,7 @@ class DriveBase : public frc2::SubsystemBase {
   void SetPose(frc::Pose2d pose);
   void DisplayPose(std::string label, frc::Pose2d pose);
   void SyncSensors();
+  void Drive(frc::ChassisSpeeds speeds, bool fieldRelative);
 
   bool IsAtPose(frc::Pose2d pose);
   units::degree_t GetPitch();
@@ -34,13 +35,14 @@ class DriveBase : public frc2::SubsystemBase {
   frc::Rotation2d GetHeading();
   units::meters_per_second_t GetVelocity();
   frc::SwerveDriveKinematics<4> GetKinematics() { return _kinematics; }
+  frc::ChassisSpeeds GetRobotRelativeSpeeds();
 
   static constexpr auto MAX_VELOCITY = 3_mps;
   static constexpr auto MAX_ANGULAR_VELOCITY = 180_deg_per_s;
   static constexpr auto MAX_ANGULAR_ACCEL = 3.14_rad_per_s;
 
   // Commands
-  frc2::CommandPtr Drive(std::function<frc::ChassisSpeeds()> speedsSupplier, bool fieldRelative);
+  frc2::CommandPtr DriveCmd(std::function<frc::ChassisSpeeds()> speedsSupplier, bool fieldRelative);
   frc2::CommandPtr DriveToPose(frc::Pose2d targetPose);
   frc2::CommandPtr XboxDrive(frc2::CommandXboxController& controller);
   frc2::CommandPtr AddVisionMeasurement(frc::Pose2d pose, units::second_t timeStamp);
@@ -70,15 +72,13 @@ class DriveBase : public frc2::SubsystemBase {
   // Sensors
   AHRS _gyro{frc::SerialPort::kMXP};
 
-  // Dynamics
+  // Controls
   frc::Translation2d _frontLeftLocation{+0.281_m, +0.281_m};
   frc::Translation2d _frontRightLocation{+0.281_m, -0.281_m};
   frc::Translation2d _backLeftLocation{-0.281_m, +0.281_m};
   frc::Translation2d _backRightLocation{-0.281_m, -0.281_m};
   frc::SwerveDriveKinematics<4> _kinematics{_frontLeftLocation, _frontRightLocation,
                                             _backLeftLocation, _backRightLocation};
-
-  // Controllers
   frc::PIDController Xcontroller{0.5, 0, 0};
   frc::PIDController Ycontroller{0.5, 0, 0};
   frc::PIDController Rcontroller{1.8, 0, 0};
