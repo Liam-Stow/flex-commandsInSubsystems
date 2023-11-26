@@ -127,6 +127,9 @@ void ICSparkMax<Position>::ConfigSmartMotion(Velocity_t maxVelocity, Acceleratio
   _pidController.SetSmartMotionMaxAccel(AccelToSparkRPMps(maxAcceleration));
   _pidController.SetSmartMotionMaxVelocity(VelToSparkRPM(maxVelocity));
   _pidController.SetSmartMotionAllowedClosedLoopError(tolerance.value());
+
+  _simSmartMotionProfile = frc::TrapezoidProfile<Position>{
+      {maxVelocity, maxAcceleration}};
 }
 
 template <class Position>
@@ -213,8 +216,8 @@ units::volt_t ICSparkMax<Position>::GetSimVoltage() {
 
     case Mode::kSmartMotion:
       output = units::volt_t{
-          _simController.Calculate(GetVelocity().value(), GetCurrentSMVelocity().value()) +
-          _FF * GetCurrentSMVelocity().value()};
+          _simController.Calculate(GetVelocity().value(), EstimateSMVelocity().value()) +
+          _FF * EstimateSMVelocity().value()};
       break;
 
     case Mode::kCurrent:
@@ -250,27 +253,9 @@ void ICSparkMax<Position>::SyncSimPID() {
 }
 
 template <class Position>
-void ICSparkMax<Position>::GenerateSMProfile() {
-  _smartMotionProfileTimer.Reset();
-  _smartMotionProfileTimer.Start();
-
-  Velocity_t maxVel = SparkRPMToVel(_pidController.GetSmartMotionMaxVelocity());
-  Acceleration_t maxAccel = SparkRPMpsToAccel(_pidController.GetSmartMotionMaxAccel());
-  _simSmartMotionProfile = frc::TrapezoidProfile<Position>{
-      {maxVel, maxAccel},                // constraints
-      {_positionTarget, Velocity_t{0}},  // goal state
-      {GetPosition(), GetVelocity()}     // current state
-  };
-}
-
-template <class Position>
-ICSparkMax<Position>::Velocity_t ICSparkMax<Position>::GetCurrentSMVelocity() {
-  if (frc::RobotBase::IsReal() || _controlType != Mode::kSmartMotion) {
+ICSparkMax<Position>::Velocity_t ICSparkMax<Position>::EstimateSMVelocity() {
+  if (_controlType != Mode::kSmartMotion) {
     return Velocity_t{0};
-  }
-
-  if (_smartMotionProfileTimer.Get() > 0.2_s) {
-    GenerateSMProfile();
   }
 
   Position_t error = units::math::abs(_positionTarget - GetPosition());
@@ -279,6 +264,7 @@ ICSparkMax<Position>::Velocity_t ICSparkMax<Position>::GetCurrentSMVelocity() {
     return Velocity_t{0};
   }
 
-auto velocity = _simSmartMotionProfile.Calculate(_smartMotionProfileTimer.Get()).velocity;
-  return velocity;
+  return _simSmartMotionProfile.Calculate(20_ms, {_positionTarget, Velocity_t{0}},
+                                          {GetPosition(), GetVelocity()})
+      .velocity;
 }

@@ -101,8 +101,9 @@ class Arm : public frc2::SubsystemBase {
       TOP_ARM_LENGTH,
       TOP_MIN_ANGLE,
       TOP_MAX_ANGLE,
-      false,  // ignore gravity, its too hard and insignificant in our double
-              // jointed arm to be worth simulating
+      false, // ignore gravity, its too hard and insignificant in our double
+            // jointed arm to be worth simulating
+      0_deg
   };
   frc::sim::SingleJointedArmSim _bottomArmSim{
       frc::DCMotor::NEO(2),
@@ -111,8 +112,9 @@ class Arm : public frc2::SubsystemBase {
       BOTTOM_ARM_LENGTH,
       BOTTOM_MIN_ANGLE,
       BOTTOM_MAX_ANGLE,
-      false,  // ignore gravity, its too hard and insignificant in our double
-              // jointed arm to be worth simulating
+      false, // ignore gravity, its too hard and insignificant in our double
+            // jointed arm to be worth simulating
+      0_deg
   };
 
   // Display

@@ -103,7 +103,7 @@ class ICSparkMax : public rev::CANSparkMax, wpi::Sendable {
    * Gets the current closed loop velocity target if there is one. Zero otherwise
    */
   Velocity_t GetVelocityTarget() {
-    return GetControlType() == Mode::kSmartMotion ? GetCurrentSMVelocity() : _velocityTarget;
+    return GetControlType() == Mode::kSmartMotion ? EstimateSMVelocity() : _velocityTarget;
   };
 
   /**
@@ -323,14 +323,12 @@ class ICSparkMax : public rev::CANSparkMax, wpi::Sendable {
   frc::PIDController _simController{0, 0, 0};
   double _FF{0};
   frc::TrapezoidProfile<Position> _simSmartMotionProfile{
-      {Velocity_t{0}, Acceleration_t{0}},  // constraints
-      {Position_t{0}, Velocity_t{0}}       // goal states
+      {Velocity_t{0}, Acceleration_t{0}}  // constraints updated by Smart motion config
   };
   frc::Timer _smartMotionProfileTimer;
   Mode _controlType = Mode::kDutyCycle;
   void SetInternalControlType(Mode controlType);
-  void GenerateSMProfile();
-  Velocity_t GetCurrentSMVelocity();
+  Velocity_t EstimateSMVelocity();
   Velocity_t _simVelocity = Velocity_t{0};
 
   // Sim device values (stuff that shows under Other Devices on Glass)
