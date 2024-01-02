@@ -138,6 +138,7 @@ void ICSparkMax::EnableSensorWrapping(double min, double max) {
   _pidController.SetPositionPIDWrappingMaxInput(max);
   _pidController.SetPositionPIDWrappingMinInput(min);
   _pidController.SetPositionPIDWrappingEnabled(true);
+  _simController.EnableContinuousInput(min,max);
 }
 
 void ICSparkMax::SetPIDFF(double P, double I, double D, double FF) {
