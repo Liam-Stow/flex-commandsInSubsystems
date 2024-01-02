@@ -1,97 +1,95 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 #include "utilities/SwerveModule.h"
-#include "utilities/Conversion.h"
 #include <frc/smartdashboard/SmartDashboard.h>
 #include <frc/MathUtil.h>
 #include <frc/RobotBase.h>
 
-SwerveModule::SwerveModule(int canDriveMotorID, int canTurnMotorID,
-                           int canTurnEncoderID, double cancoderMagOffset)
-    : _canDriveMotor(canDriveMotorID, "Canivore"),
-      _canTurnMotor(canTurnMotorID, "Canivore"),
-      _canTurnEncoder(canTurnEncoderID, "Canivore") {
+using namespace ctre::phoenix6;
+
+SwerveModule::SwerveModule(int driveMotorID, int turnMotorID, int cancoderID,
+                           double cancoderMagOffset)
+    : _driveMotor(driveMotorID, "Canivore"),
+      _turnMotor(turnMotorID, "Canivore"),
+      _cancoder(cancoderID, "Canivore"),
+      _driveID(std::to_string(driveMotorID)),
+      _turnID(std::to_string(turnMotorID)),
+      _cancoderID(std::to_string(cancoderID)) {
+  using namespace ctre::phoenix6::configs;
+  using namespace ctre::phoenix6::signals;
+
   // Config CANCoder
-  _canTurnEncoder.ConfigFactoryDefault();
-  _canTurnEncoder.SetPositionToAbsolute();
-  _canTurnEncoder.ConfigAbsoluteSensorRange(AbsoluteSensorRange::Signed_PlusMinus180);
-  _canTurnEncoder.ConfigMagnetOffset(cancoderMagOffset);
+  CANcoderConfiguration cancoderConfig;
+  cancoderConfig.MagnetSensor.AbsoluteSensorRange = AbsoluteSensorRangeValue::Signed_PlusMinusHalf;
+  cancoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue::CounterClockwise_Positive;
+  cancoderConfig.MagnetSensor.MagnetOffset = cancoderMagOffset;
+  _cancoder.GetConfigurator().Apply(cancoderConfig);
 
   // Config Turning Motor
-  _canTurnMotor.ConfigFactoryDefault();
-  _canTurnMotor.ConfigSelectedFeedbackSensor(FeedbackDevice::IntegratedSensor);
-  _canTurnMotor.ConfigFeedbackNotContinuous(true);
-  _canTurnMotor.Config_kP(PID_SLOT_INDEX, TURN_P);
-  _canTurnMotor.Config_kI(PID_SLOT_INDEX, TURN_I);
-  _canTurnMotor.Config_kD(PID_SLOT_INDEX, TURN_D);
-  _canTurnMotor.ConfigSupplyCurrentLimit(CURRENT_LIMIT_CONFIG);
-  _canTurnMotor.SetInverted(true); // make counter clockwise rotations positive
-  _canTurnMotor.SetNeutralMode(NeutralMode::Brake);
+  TalonFXConfiguration turnConfig;
+  turnConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue::RotorSensor;
+  turnConfig.Feedback.SensorToMechanismRatio = TURNING_GEAR_RATIO;
+  turnConfig.ClosedLoopGeneral.ContinuousWrap = true;
+  turnConfig.Slot0.kP = 50;
+  turnConfig.Slot0.kI = 0.0;
+  turnConfig.Slot0.kD = 1;
+  turnConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+  turnConfig.CurrentLimits.SupplyCurrentLimit = 25;      // Amps
+  turnConfig.CurrentLimits.SupplyCurrentThreshold = 40;  // Amps
+  turnConfig.CurrentLimits.SupplyTimeThreshold = 0.1;    // Seconds
+  turnConfig.MotorOutput.Inverted = true;  // +V should steer the wheel counter-clockwise
+  turnConfig.MotorOutput.NeutralMode = NeutralModeValue::Brake;
+  _turnMotor.GetConfigurator().Apply(turnConfig);
 
   // Config Driving Motor
-  _canDriveMotor.ConfigFactoryDefault();
-  _canDriveMotor.ConfigSelectedFeedbackSensor(FeedbackDevice::IntegratedSensor);
-  _canDriveMotor.Config_kP(PID_SLOT_INDEX, DRIVE_P);
-  _canDriveMotor.Config_kI(PID_SLOT_INDEX, DRIVE_I);
-  _canDriveMotor.Config_kD(PID_SLOT_INDEX, DRIVE_D);
-  _canDriveMotor.Config_kF(PID_SLOT_INDEX, DRIVE_F);
-  _canDriveMotor.ConfigSupplyCurrentLimit(CURRENT_LIMIT_CONFIG);
-  _canDriveMotor.SetNeutralMode(NeutralMode::Brake);
+  TalonFXConfiguration driveConfig;
+  driveConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue::RotorSensor;
+  driveConfig.Feedback.SensorToMechanismRatio = DRIVE_GEAR_RATIO;
+  driveConfig.ClosedLoopGeneral.ContinuousWrap = false;
+  driveConfig.Slot0.kP = 0.031489;
+  driveConfig.Slot0.kI = 0.0;
+  driveConfig.Slot0.kD = 0.0;
+  driveConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+  driveConfig.CurrentLimits.SupplyCurrentLimit = 50;      // Amps
+  driveConfig.CurrentLimits.SupplyCurrentThreshold = 60;  // Amps
+  driveConfig.CurrentLimits.SupplyTimeThreshold = 0.1;    // Seconds
+  driveConfig.MotorOutput.Inverted = true;  // +V should rotate the motor counter-clockwise
+  driveConfig.MotorOutput.NeutralMode = NeutralModeValue::Brake;
+  _driveMotor.GetConfigurator().Apply(driveConfig);
 }
 
 void SwerveModule::SetDesiredState(const frc::SwerveModuleState& referenceState) {
+  auto moduleAngle = GetAngle();
+
   // Optimize the reference state to avoid spinning further than 90 degrees
-  auto targetState = frc::SwerveModuleState::Optimize(referenceState, GetAngle());
+  auto targetState = frc::SwerveModuleState::Optimize(referenceState, moduleAngle);
 
-  // Move target angle so we can cross over the 180 degree line without going the long way round
-  auto difference = targetState.angle.Degrees() - GetAngle().Degrees();
-  difference = frc::InputModulus(difference, -180_deg, 180_deg);
-  auto targetAngle = GetAngle().Degrees() + difference;
+  // Scale speed by cosine of angle error. This scales down movement
+  // perpendicular to the desired direction of travel that can occur when
+  // modules change directions. This results in smoother driving.
+  targetState.speed *= (targetState.angle - moduleAngle).Cos();
 
-  // Drive! These functions do some conversions and send targets to falcons
-  SetDesiredAngle(targetAngle);
+  // Drive! These functions send targets to motors
+  SetDesiredAngle(targetState.angle.Degrees());
   SetDesiredVelocity(targetState.speed);
 }
 
-frc::SwerveModulePosition SwerveModule::GetPosition() {
-  if (frc::RobotBase::IsSimulation()) {
-    return {_simulatorDistanceTravelled, GetAngle().Radians()};
-  }
-  else {
-    return {Conversions::FalconTicsToMeters(_canDriveMotor.GetSelectedSensorPosition(), DRIVE_GEAR_RATIO, WHEEL_RADIUS),
-           GetAngle().Radians()};
-  }
-}
-
-void SwerveModule::SendSensorsToDash() {
-  std::string driveMotorName = "drive motor " + std::to_string(_canDriveMotor.GetDeviceID());
-  std::string turnMotorName = "turn motor " + std::to_string(_canTurnMotor.GetDeviceID());
-  std::string turnEncoderName = "turn encoder " + std::to_string(_canTurnEncoder.GetDeviceNumber());
-
-  frc::SmartDashboard::PutNumber(driveMotorName + " velocity", _canDriveMotor.GetSelectedSensorVelocity());
-  frc::SmartDashboard::PutNumber(turnMotorName  + " position degrees", GetAngle().Degrees().value());
-  frc::SmartDashboard::PutNumber(turnMotorName  + " position tics", _canTurnMotor.GetSelectedSensorPosition());
-  frc::SmartDashboard::PutNumber(turnMotorName  + " target", _canTurnMotor.GetClosedLoopTarget());
-  frc::SmartDashboard::PutNumber(turnMotorName  + " error", _canTurnMotor.GetClosedLoopError());
-  frc::SmartDashboard::PutNumber(turnEncoderName+ " Abs position", _canTurnEncoder.GetAbsolutePosition());
-}
-
 frc::Rotation2d SwerveModule::GetAngle() {
-  // If in simulation, pretend swerve is always at target state
-  const double rawPos = frc::RobotBase::IsReal()
-                            ? _canTurnMotor.GetSelectedSensorPosition()
-                            : _canTurnMotor.GetClosedLoopTarget();
-  return Conversions::FalconTicsToOutputRotations(rawPos, TURNING_GEAR_RATIO);
+  units::radian_t turnAngle = BaseStatusSignal::GetLatencyCompensatedValue(
+      _turnMotor.GetPosition(), _turnMotor.GetVelocity());
+  return turnAngle;
 }
 
 units::meters_per_second_t SwerveModule::GetSpeed() {
-  // If in simulation, pretend swerve is always at target state
-  const double rawSpeed = frc::RobotBase::IsReal()
-                            ? _canDriveMotor.GetSelectedSensorVelocity()
-                            : _canDriveMotor.GetClosedLoopTarget();
-  return Conversions::FalconVelToRobotVel(rawSpeed, DRIVE_GEAR_RATIO, WHEEL_RADIUS);
+  return WheelVelToRobotVel(_driveMotor.GetVelocity().GetValue());
+}
+
+units::meter_t SwerveModule::GetDistanceTravelled() {
+  units::turn_t driveRotations = BaseStatusSignal::GetLatencyCompensatedValue(
+      _driveMotor.GetPosition(), _driveMotor.GetVelocity());
+  return WheelDistToRobotDist(driveRotations);
+}
+
+frc::SwerveModulePosition SwerveModule::GetPosition() {
+  return {GetDistanceTravelled(), GetAngle()};
 }
 
 frc::SwerveModuleState SwerveModule::GetState() {
@@ -99,34 +97,69 @@ frc::SwerveModuleState SwerveModule::GetState() {
 }
 
 void SwerveModule::SetDesiredAngle(units::degree_t angle) {
-  const double targetRotations = angle.value() / 360.0;
-  const int targetTics =  targetRotations * TICS_PER_TURNING_WHEEL_REVOLUTION;
-  _canTurnMotor.Set(TalonFXControlMode::Position, targetTics);
+  _turnMotor.SetControl(controls::PositionVoltage{angle});
 }
 
 void SwerveModule::SetDesiredVelocity(units::meters_per_second_t velocity) {
-  double falconVel = Conversions::RobotVelToFalconVel(
-      velocity, DRIVE_GEAR_RATIO, WHEEL_RADIUS);
-  units::volt_t ffvolts = _feedFoward.Calculate(velocity);
-  double ffpercent = ffvolts.value()/12;
-  _canDriveMotor.Set(TalonFXControlMode::Velocity, falconVel,
-                     DemandType::DemandType_ArbitraryFeedForward, ffpercent);
-  _simulatorDistanceTravelled += velocity * 20_ms;
+  auto ffvolts = _driveFeedForward.Calculate(velocity);
+  auto velocityRequest = controls::VelocityVoltage{RobotVelToWheelVel(velocity)};
+  _driveMotor.SetControl(velocityRequest.WithFeedForward(ffvolts));
 }
 
 void SwerveModule::StopMotors() {
-  _canDriveMotor.Set(TalonFXControlMode::PercentOutput, 0);
-  _canTurnMotor.Set(TalonFXControlMode::PercentOutput, 0);
+  _driveMotor.StopMotor();
+  _turnMotor.StopMotor();
 }
 
-void SwerveModule::SetNeutralMode(NeutralMode mode) {
-  _canTurnMotor.SetNeutralMode(mode);
-  _canDriveMotor.SetNeutralMode(mode);
+void SwerveModule::EnableBreakMode(bool enableBreakMode) {
+  configs::MotorOutputConfigs config;
+  auto& configurator = _driveMotor.GetConfigurator();
+  configurator.Refresh(config);
+  if (enableBreakMode) {
+    config.NeutralMode = signals::NeutralModeValue::Brake;
+  } else {
+    config.NeutralMode = signals::NeutralModeValue::Coast;
+  }
+  configurator.Apply(config);
 }
 
 void SwerveModule::SyncSensors() {
-  double cancoderDegrees = _canTurnEncoder.GetAbsolutePosition();
-  double cancoderRevolutions = cancoderDegrees/360;
-  int cancoderPosInFalconTics = cancoderRevolutions*TICS_PER_TURNING_WHEEL_REVOLUTION;
-  _canTurnMotor.SetSelectedSensorPosition(cancoderPosInFalconTics);
+  _turnMotor.SetPosition(_cancoder.GetAbsolutePosition().GetValue());
+}
+
+void SwerveModule::SendSensorsToDash() {
+  std::string driveName = "swerve/drive " + _driveID;
+  std::string turnName = "swerve/turn " + _turnID;
+  std::string encoderName = "swerve/cancoder " + _cancoderID;
+
+  // clang-format off
+  frc::SmartDashboard::PutNumber(  driveName + " target",   _driveMotor.GetClosedLoopReference().GetValue()    ); 
+  frc::SmartDashboard::PutNumber(  driveName + " velocity", _driveMotor.GetVelocity().GetValue().value()       ); 
+  frc::SmartDashboard::PutNumber(  driveName + " error",    _driveMotor.GetClosedLoopError().GetValue()        ); 
+  frc::SmartDashboard::PutNumber(   turnName + " target",   _turnMotor.GetClosedLoopReference().GetValue()     ); 
+  frc::SmartDashboard::PutNumber(   turnName + " position", _turnMotor.GetPosition().GetValue().value()        ); 
+  frc::SmartDashboard::PutNumber(   turnName + " error",    _turnMotor.GetClosedLoopError().GetValue()         ); 
+  frc::SmartDashboard::PutNumber(encoderName + " position", _cancoder.GetAbsolutePosition().GetValue().value() );
+  // clang-format on
+}
+
+void SwerveModule::UpdateSim(units::second_t deltaTime) {
+  // Drive Motor
+  auto& driveState = _driveMotor.GetSimState();
+  _driveMotorSim.SetInputVoltage(driveState.GetMotorVoltage());
+  _driveMotorSim.Update(deltaTime);
+  driveState.SetRawRotorPosition(_driveMotorSim.GetAngularPosition() * DRIVE_GEAR_RATIO);
+  driveState.SetRotorVelocity(_driveMotorSim.GetAngularVelocity() * DRIVE_GEAR_RATIO);
+
+  // Turn Motor
+  auto& turnState = _turnMotor.GetSimState();
+  _turnMotorSim.SetInputVoltage(turnState.GetMotorVoltage());
+  _turnMotorSim.Update(deltaTime);
+  turnState.SetRawRotorPosition(_turnMotorSim.GetAngularPosition() * TURNING_GEAR_RATIO);
+  turnState.SetRotorVelocity(_turnMotorSim.GetAngularVelocity() * TURNING_GEAR_RATIO);
+
+  // CANcoders are attached directly to the mechanism, so don't account for the steer gearing
+  auto& cancoderState = _cancoder.GetSimState();
+  cancoderState.SetRawPosition(_turnMotorSim.GetAngularPosition());
+  cancoderState.SetVelocity(_turnMotorSim.GetAngularVelocity());
 }

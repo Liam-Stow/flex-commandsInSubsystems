@@ -222,13 +222,32 @@ frc2::CommandPtr DriveBase::AddVisionMeasurement(frc::Pose2d pose, units::second
   return RunOnce([&, pose, timeStamp] { _poseEstimator.AddVisionMeasurement(pose, timeStamp); });
 }
 
-void DriveBase::SetNeutralMode(NeutralMode mode) {
-  _frontLeft.SetNeutralMode(mode);
-  _frontRight.SetNeutralMode(mode);
-  _backLeft.SetNeutralMode(mode);
-  _backRight.SetNeutralMode(mode);
+void DriveBase::EnableBreakMode(bool enabled) {
+  _frontLeft.EnableBreakMode(enabled);
+  _frontRight.EnableBreakMode(enabled);
+  _backLeft.EnableBreakMode(enabled);
+  _backRight.EnableBreakMode(enabled);
 }
 
 units::degree_t DriveBase::GetPitch() {
   return _gyro.GetPitch() * 1_deg;
+}
+
+void DriveBase::SimulationPeriodic() {
+  // Update the states of the modules
+  _frontLeft.UpdateSim(20_ms);
+  _frontRight.UpdateSim(20_ms);
+  _backLeft.UpdateSim(20_ms);
+  _backRight.UpdateSim(20_ms);
+
+  // Update the angle of the gyro
+  auto fl = _frontLeft.GetState();
+  auto fr = _frontRight.GetState();
+  auto bl = _backLeft.GetState();
+  auto br = _backRight.GetState();
+  auto chassisSpeeds = _kinematics.ToChassisSpeeds(fl, fr, bl, br);
+  units::radian_t turnDelta = chassisSpeeds.omega*20_ms;
+  frc::Rotation2d rotationDelta{turnDelta};
+  units::degree_t newHeading = GetHeading().RotateBy(rotationDelta).Degrees();
+  _gyro.SetAngleAdjustment(-newHeading.value());  // negative to switch to CW from CCW
 }

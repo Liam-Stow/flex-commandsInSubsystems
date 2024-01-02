@@ -22,8 +22,9 @@ class DriveBase : public frc2::SubsystemBase {
   }
 
   void Periodic() override;
+  void SimulationPeriodic() override;
   void DisplayTrajectory(std::string name, frc::Trajectory trajectory);
-  void SetNeutralMode(NeutralMode mode);
+  void EnableBreakMode(bool enabled);
   void SetPose(frc::Pose2d pose);
   void DisplayPose(std::string label, frc::Pose2d pose);
   void SyncSensors();
