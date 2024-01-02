@@ -10,39 +10,32 @@ ICSparkMax::ICSparkMax(int deviceID, units::ampere_t currentLimit)
     : rev::CANSparkMax(deviceID, rev::CANSparkMaxLowLevel::MotorType::kBrushless) {
   RestoreFactoryDefaults();
   SetSmartCurrentLimit(currentLimit.value());
-  SetConversionFactor(1); // Makes the internal encoder use revs per sec not revs per min
+  SetConversionFactor(1);  // Makes the internal encoder use revs per sec not revs per min
 
   _pidController.SetSmartMotionMinOutputVelocity(0);
   SetClosedLoopOutputRange(-1, 1);
 }
 
 void ICSparkMax::InitSendable(wpi::SendableBuilder& builder) {
+  // clang-format off
   builder.AddDoubleProperty("Position", [&] { return GetPosition().value(); }, nullptr);  // setter is null, cannot set position directly
   builder.AddDoubleProperty("Velocity", [&] { return GetVelocity().value(); }, nullptr);
+  builder.AddDoubleProperty("Position Target", [&] { return GetPositionTarget().value(); }, nullptr);
+  builder.AddDoubleProperty("Velocity Target", [&] { return GetVelocityTarget().value(); }, nullptr);
 
-  builder.AddDoubleProperty(
-      "Voltage", [&] { 
+  builder.AddDoubleProperty("Voltage", [&] { 
         if (frc::RobotBase::IsSimulation()){return GetSimVoltage().value();}
         else {return CANSparkMax::GetAppliedOutput() * 12;}
       }, nullptr);
 
-  // builder.AddDoubleProperty("Voltage", [&]{return GetSimVoltage().value();});
-
-  builder.AddDoubleProperty(
-      "Position Target", [&] { return GetPositionTarget().value(); }, nullptr);
-  builder.AddDoubleProperty(
-      "Velocity Target", [&] { return GetVelocityTarget().value(); }, nullptr);
-  builder.AddDoubleProperty(
-      "P Gain", [&] { return _simController.GetP(); }, [&](double P) { _simController.SetP(P); SyncSimPID();});
-  builder.AddDoubleProperty(
-      "I Gain", [&] { return _simController.GetI(); }, [&](double I) { _simController.SetI(I); SyncSimPID();});
-  builder.AddDoubleProperty(
-      "D Gain", [&] { return _simController.GetD(); }, [&](double D) { _simController.SetD(D); SyncSimPID();});
-  builder.AddDoubleProperty(
-      "F Gain", [&] { return _FF; }, [&](double F) { _FF = F; SyncSimPID();});
+  builder.AddDoubleProperty("P Gain", [&] { return _simController.GetP(); }, [&](double P) { _simController.SetP(P); SyncSimPID();});
+  builder.AddDoubleProperty("I Gain", [&] { return _simController.GetI(); }, [&](double I) { _simController.SetI(I); SyncSimPID();});
+  builder.AddDoubleProperty("D Gain", [&] { return _simController.GetD(); }, [&](double D) { _simController.SetD(D); SyncSimPID();});
+  builder.AddDoubleProperty("F Gain", [&] { return _FF; }, [&](double F) { _FF = F; SyncSimPID();});
+  // clang-format on
 }
 
-void ICSparkMax::SetPosition(units::turn_t position){
+void ICSparkMax::SetPosition(units::turn_t position) {
   _encoder->SetPosition(position.value());
 }
 
@@ -111,14 +104,14 @@ void ICSparkMax::SetInternalControlType(Mode controlType) {
   _simControlMode.Set((int)_controlType);
 }
 
-void ICSparkMax::ConfigSmartMotion(units::turns_per_second_t maxVelocity, units::turns_per_second_squared_t maxAcceleration,
-                                             units::turn_t tolerance) {
+void ICSparkMax::ConfigSmartMotion(units::turns_per_second_t maxVelocity,
+                                   units::turns_per_second_squared_t maxAcceleration,
+                                   units::turn_t tolerance) {
   _pidController.SetSmartMotionMaxAccel(AccelToSparkRPMps(maxAcceleration));
   _pidController.SetSmartMotionMaxVelocity(VelToSparkRPM(maxVelocity));
   _pidController.SetSmartMotionAllowedClosedLoopError(tolerance.value());
 
-  _simSmartMotionProfile = frc::TrapezoidProfile<units::turns>{
-      {maxVelocity, maxAcceleration}};
+  _simSmartMotionProfile = frc::TrapezoidProfile<units::turns>{{maxVelocity, maxAcceleration}};
 }
 
 void ICSparkMax::SetConversionFactor(double rotationsToDesired) {
@@ -153,13 +146,11 @@ void ICSparkMax::SetPIDFF(double P, double I, double D, double FF) {
   _simController.SetD(D);
   _FF = FF;
   SyncSimPID();
-
 }
 
-void ICSparkMax::SetClosedLoopOutputRange(double minOutputPercent,
-                                                    double maxOutputPercent) {
+void ICSparkMax::SetClosedLoopOutputRange(double minOutputPercent, double maxOutputPercent) {
   _minPidOutput = minOutputPercent;
-  _maxPidOutput = maxOutputPercent;                                                    
+  _maxPidOutput = maxOutputPercent;
   _pidController.SetOutputRange(minOutputPercent, maxOutputPercent);
 }
 
@@ -221,8 +212,8 @@ void ICSparkMax::UpdateSimEncoder(units::turn_t position, units::turns_per_secon
 
 void ICSparkMax::SyncSimPID() {
   double conversion = (GetControlType() == Mode::kPosition)
-    ? _encoder->GetPositionConversionFactor()
-    : _encoder->GetVelocityConversionFactor();
+                          ? _encoder->GetPositionConversionFactor()
+                          : _encoder->GetVelocityConversionFactor();
 
   _pidController.SetP(_simController.GetP() * conversion);
   _pidController.SetI(_simController.GetI() * conversion);
@@ -242,7 +233,8 @@ units::turns_per_second_t ICSparkMax::EstimateSMVelocity() {
     return units::turns_per_second_t{0};
   }
 
-  return _simSmartMotionProfile.Calculate(20_ms, {_positionTarget, units::turns_per_second_t{0}},
-                                          {GetPosition(), GetVelocity()})
+  return _simSmartMotionProfile
+      .Calculate(20_ms, {_positionTarget, units::turns_per_second_t{0}},
+                 {GetPosition(), GetVelocity()})
       .velocity;
 }
