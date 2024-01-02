@@ -88,10 +88,10 @@ class Arm : public frc2::SubsystemBase {
   static constexpr double BOTTOM_F = 27;
 
   // Actuators
-  ICSparkMax<> _bottomMotor{canid::armBottom};
-  ICSparkMax<> _topMotor{canid::armTop};
-  ICSparkMax<> _topFollower{canid::armTopFollow};
-  ICSparkMax<> _bottomFollower{canid::armBottomFollow};
+  ICSparkMax _bottomMotor{canid::armBottom};
+  ICSparkMax _topMotor{canid::armTop};
+  ICSparkMax _topFollower{canid::armTopFollow};
+  ICSparkMax _bottomFollower{canid::armBottomFollow};
 
   // Simulation
   frc::sim::SingleJointedArmSim _topArmSim{

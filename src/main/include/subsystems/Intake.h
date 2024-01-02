@@ -20,7 +20,7 @@ class Intake : public frc2::SubsystemBase {
 
  private:
   Intake();
-  ICSparkMax<> _motor{canid::intake};
+  ICSparkMax _motor{canid::intake};
   frc::sim::DCMotorSim _sim{frc::DCMotor::NEO(), 10, 0.0001_kg_sq_m};
   frc::Mechanism2d _intakeMech{4, 4};  // canvas width and height
   frc::MechanismRoot2d* _root = _intakeMech.GetRoot("intakeRoot", 2, 2);  // root x and y

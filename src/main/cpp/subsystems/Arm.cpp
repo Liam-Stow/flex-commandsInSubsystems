@@ -1,5 +1,6 @@
 #include "subsystems/Arm.h"
 #include <frc2/command/Commands.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 
 Arm::Arm() {
   _bottomMotor.SetConversionFactor(1 / BOTTOM_GEAR_RATIO);

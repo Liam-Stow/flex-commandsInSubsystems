@@ -6,8 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 
-template <class Position>
-ICSparkMax<Position>::ICSparkMax(int deviceID, units::ampere_t currentLimit)
+ICSparkMax::ICSparkMax(int deviceID, units::ampere_t currentLimit)
     : rev::CANSparkMax(deviceID, rev::CANSparkMaxLowLevel::MotorType::kBrushless) {
   RestoreFactoryDefaults();
   SetSmartCurrentLimit(currentLimit.value());
@@ -17,8 +16,7 @@ ICSparkMax<Position>::ICSparkMax(int deviceID, units::ampere_t currentLimit)
   SetClosedLoopOutputRange(-1, 1);
 }
 
-template <class Position>
-void ICSparkMax<Position>::InitSendable(wpi::SendableBuilder& builder) {
+void ICSparkMax::InitSendable(wpi::SendableBuilder& builder) {
   builder.AddDoubleProperty("Position", [&] { return GetPosition().value(); }, nullptr);  // setter is null, cannot set position directly
   builder.AddDoubleProperty("Velocity", [&] { return GetVelocity().value(); }, nullptr);
 
@@ -44,15 +42,13 @@ void ICSparkMax<Position>::InitSendable(wpi::SendableBuilder& builder) {
       "F Gain", [&] { return _FF; }, [&](double F) { _FF = F; SyncSimPID();});
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetPosition(Position_t position){
+void ICSparkMax::SetPosition(units::turn_t position){
   _encoder->SetPosition(position.value());
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetPositionTarget(Position_t target, units::volt_t arbFeedForward) {
+void ICSparkMax::SetPositionTarget(units::turn_t target, units::volt_t arbFeedForward) {
   _positionTarget = target;
-  _velocityTarget = Velocity_t{0};
+  _velocityTarget = units::turns_per_second_t{0};
   _voltageTarget = 0_V;
   _arbFeedForward = arbFeedForward;
   SetInternalControlType(Mode::kPosition);
@@ -60,11 +56,10 @@ void ICSparkMax<Position>::SetPositionTarget(Position_t target, units::volt_t ar
   _pidController.SetReference(target.value(), GetControlType(), 0, _arbFeedForward.value());
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetSmartMotionTarget(Position_t target, units::volt_t arbFeedForward) {
+void ICSparkMax::SetSmartMotionTarget(units::turn_t target, units::volt_t arbFeedForward) {
   _positionTarget = target;
   _smartMotionProfileTimer.Start();
-  _velocityTarget = Velocity_t{0};
+  _velocityTarget = units::turns_per_second_t{0};
   _voltageTarget = 0_V;
   _arbFeedForward = arbFeedForward;
   SetInternalControlType(Mode::kSmartMotion);
@@ -72,10 +67,9 @@ void ICSparkMax<Position>::SetSmartMotionTarget(Position_t target, units::volt_t
   _pidController.SetReference(target.value(), GetControlType(), 0, _arbFeedForward.value());
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetVelocityTarget(Velocity_t target, units::volt_t arbFeedForward) {
+void ICSparkMax::SetVelocityTarget(units::turns_per_second_t target, units::volt_t arbFeedForward) {
   _velocityTarget = target;
-  _positionTarget = Position_t{0};
+  _positionTarget = units::turn_t{0};
   _voltageTarget = 0_V;
   _arbFeedForward = arbFeedForward;
   SetInternalControlType(Mode::kVelocity);
@@ -83,10 +77,9 @@ void ICSparkMax<Position>::SetVelocityTarget(Velocity_t target, units::volt_t ar
   _pidController.SetReference(target.value(), GetControlType(), 0, _arbFeedForward.value());
 }
 
-template <class Position>
-void ICSparkMax<Position>::Set(double speed) {
-  _velocityTarget = Velocity_t{0};
-  _positionTarget = Position_t{0};
+void ICSparkMax::Set(double speed) {
+  _velocityTarget = units::turns_per_second_t{0};
+  _positionTarget = units::turn_t{0};
   _voltageTarget = 0_V;
   SetInternalControlType(Mode::kDutyCycle);
   if (frc::RobotBase::IsSimulation()) {
@@ -95,10 +88,9 @@ void ICSparkMax<Position>::Set(double speed) {
   CANSparkMax::Set(speed);
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetVoltage(units::volt_t output) {
-  _velocityTarget = Velocity_t{0};
-  _positionTarget = Position_t{0};
+void ICSparkMax::SetVoltage(units::volt_t output) {
+  _velocityTarget = units::turns_per_second_t{0};
+  _positionTarget = units::turn_t{0};
   _voltageTarget = output;
   _arbFeedForward = 0_V;
   SetInternalControlType(Mode::kVoltage);
@@ -106,41 +98,36 @@ void ICSparkMax<Position>::SetVoltage(units::volt_t output) {
   _pidController.SetReference(output.value(), GetControlType(), 0, _arbFeedForward.value());
 }
 
-template <class Position>
-void ICSparkMax<Position>::StopMotor() {
-  _velocityTarget = Velocity_t{0};
-  _positionTarget = Position_t{0};
+void ICSparkMax::StopMotor() {
+  _velocityTarget = units::turns_per_second_t{0};
+  _positionTarget = units::turn_t{0};
   _voltageTarget = 0_V;
   SetInternalControlType(Mode::kDutyCycle);
   CANSparkMax::StopMotor();
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetInternalControlType(Mode controlType) {
+void ICSparkMax::SetInternalControlType(Mode controlType) {
   _controlType = controlType;
   _simControlMode.Set((int)_controlType);
 }
 
-template <class Position>
-void ICSparkMax<Position>::ConfigSmartMotion(Velocity_t maxVelocity, Acceleration_t maxAcceleration,
-                                             Position_t tolerance) {
+void ICSparkMax::ConfigSmartMotion(units::turns_per_second_t maxVelocity, units::turns_per_second_squared_t maxAcceleration,
+                                             units::turn_t tolerance) {
   _pidController.SetSmartMotionMaxAccel(AccelToSparkRPMps(maxAcceleration));
   _pidController.SetSmartMotionMaxVelocity(VelToSparkRPM(maxVelocity));
   _pidController.SetSmartMotionAllowedClosedLoopError(tolerance.value());
 
-  _simSmartMotionProfile = frc::TrapezoidProfile<Position>{
+  _simSmartMotionProfile = frc::TrapezoidProfile<units::turns>{
       {maxVelocity, maxAcceleration}};
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetConversionFactor(double rotationsToDesired) {
+void ICSparkMax::SetConversionFactor(double rotationsToDesired) {
   _encoder->SetPositionConversionFactor(rotationsToDesired);
   // Need to divide vel by 60 because Spark Max uses Revs per minute not Revs per second
   _encoder->SetVelocityConversionFactor(rotationsToDesired / 60);
 }
 
-template <class Position>
-void ICSparkMax<Position>::UseAlternateEncoder(int countsPerRev) {
+void ICSparkMax::UseAlternateEncoder(int countsPerRev) {
   const double posConversion = _encoder->GetPositionConversionFactor();
 
   _encoder = std::make_unique<rev::SparkMaxAlternateEncoder>(
@@ -150,20 +137,17 @@ void ICSparkMax<Position>::UseAlternateEncoder(int countsPerRev) {
   SetConversionFactor(posConversion);
 }
 
-template <class Position>
-void ICSparkMax<Position>::UseAbsoluteEncoder(rev::SparkMaxAbsoluteEncoder& encoder) {
+void ICSparkMax::UseAbsoluteEncoder(rev::SparkMaxAbsoluteEncoder& encoder) {
   _pidController.SetFeedbackDevice(encoder);
 }
 
-template <class Position>
-void ICSparkMax<Position>::EnableSensorWrapping(double min, double max) {
+void ICSparkMax::EnableSensorWrapping(double min, double max) {
   _pidController.SetPositionPIDWrappingMaxInput(max);
   _pidController.SetPositionPIDWrappingMinInput(min);
   _pidController.SetPositionPIDWrappingEnabled(true);
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetPIDFF(double P, double I, double D, double FF) {
+void ICSparkMax::SetPIDFF(double P, double I, double D, double FF) {
   _simController.SetP(P);
   _simController.SetI(I);
   _simController.SetD(D);
@@ -172,25 +156,22 @@ void ICSparkMax<Position>::SetPIDFF(double P, double I, double D, double FF) {
 
 }
 
-template <class Position>
-void ICSparkMax<Position>::SetClosedLoopOutputRange(double minOutputPercent,
+void ICSparkMax::SetClosedLoopOutputRange(double minOutputPercent,
                                                     double maxOutputPercent) {
   _minPidOutput = minOutputPercent;
   _maxPidOutput = maxOutputPercent;                                                    
   _pidController.SetOutputRange(minOutputPercent, maxOutputPercent);
 }
 
-template <class Position>
-ICSparkMax<Position>::Velocity_t ICSparkMax<Position>::GetVelocity() {
+units::turns_per_second_t ICSparkMax::GetVelocity() {
   if (frc::RobotBase::IsSimulation()) {
     return _simVelocity;
   } else {
-    return Velocity_t{_encoder->GetVelocity()};
+    return units::turns_per_second_t{_encoder->GetVelocity()};
   }
 }
 
-template <class Position>
-units::volt_t ICSparkMax<Position>::GetSimVoltage() {
+units::volt_t ICSparkMax::GetSimVoltage() {
   units::volt_t output = 0_V;
 
   switch (_controlType) {
@@ -233,14 +214,12 @@ units::volt_t ICSparkMax<Position>::GetSimVoltage() {
   return std::clamp(output, _minPidOutput * 12_V, _maxPidOutput * 12_V);
 }
 
-template <class Position>
-void ICSparkMax<Position>::UpdateSimEncoder(Position_t position, Velocity_t velocity) {
+void ICSparkMax::UpdateSimEncoder(units::turn_t position, units::turns_per_second_t velocity) {
   _encoder->SetPosition(position.value());
   _simVelocity = velocity;
 }
 
-template <class Position>
-void ICSparkMax<Position>::SyncSimPID() {
+void ICSparkMax::SyncSimPID() {
   double conversion = (GetControlType() == Mode::kPosition)
     ? _encoder->GetPositionConversionFactor()
     : _encoder->GetVelocityConversionFactor();
@@ -252,19 +231,18 @@ void ICSparkMax<Position>::SyncSimPID() {
   _simController.SetIntegratorRange(-_pidController.GetIMaxAccum(), _pidController.GetIMaxAccum());
 }
 
-template <class Position>
-ICSparkMax<Position>::Velocity_t ICSparkMax<Position>::EstimateSMVelocity() {
+units::turns_per_second_t ICSparkMax::EstimateSMVelocity() {
   if (_controlType != Mode::kSmartMotion) {
-    return Velocity_t{0};
+    return units::turns_per_second_t{0};
   }
 
-  Position_t error = units::math::abs(_positionTarget - GetPosition());
-  Position_t tolerance = SparkRevsToPos(_pidController.GetSmartMotionAllowedClosedLoopError());
+  units::turn_t error = units::math::abs(_positionTarget - GetPosition());
+  units::turn_t tolerance = SparkRevsToPos(_pidController.GetSmartMotionAllowedClosedLoopError());
   if (error < tolerance) {
-    return Velocity_t{0};
+    return units::turns_per_second_t{0};
   }
 
-  return _simSmartMotionProfile.Calculate(20_ms, {_positionTarget, Velocity_t{0}},
+  return _simSmartMotionProfile.Calculate(20_ms, {_positionTarget, units::turns_per_second_t{0}},
                                           {GetPosition(), GetVelocity()})
       .velocity;
 }
