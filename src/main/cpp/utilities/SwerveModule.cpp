@@ -8,7 +8,7 @@ using namespace ctre::phoenix6;
 SwerveModule::SwerveModule(int driveMotorID, int turnMotorID, int cancoderID,
                            double cancoderMagOffset)
     : _driveMotor(driveMotorID, "Canivore"),
-      _turnMotor(turnMotorID, "Canivore"),
+      _turnMotor(turnMotorID, 40_A),
       _cancoder(cancoderID, "Canivore"),
       _driveID(std::to_string(driveMotorID)),
       _turnID(std::to_string(turnMotorID)),
@@ -24,20 +24,11 @@ SwerveModule::SwerveModule(int driveMotorID, int turnMotorID, int cancoderID,
   _cancoder.GetConfigurator().Apply(cancoderConfig);
 
   // Config Turning Motor
-  TalonFXConfiguration turnConfig;
-  turnConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue::RotorSensor;
-  turnConfig.Feedback.SensorToMechanismRatio = TURNING_GEAR_RATIO;
-  turnConfig.ClosedLoopGeneral.ContinuousWrap = true;
-  turnConfig.Slot0.kP = 50;
-  turnConfig.Slot0.kI = 0.0;
-  turnConfig.Slot0.kD = 1;
-  turnConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
-  turnConfig.CurrentLimits.SupplyCurrentLimit = 25;      // Amps
-  turnConfig.CurrentLimits.SupplyCurrentThreshold = 40;  // Amps
-  turnConfig.CurrentLimits.SupplyTimeThreshold = 0.1;    // Seconds
-  turnConfig.MotorOutput.Inverted = true;  // +V should steer the wheel counter-clockwise
-  turnConfig.MotorOutput.NeutralMode = NeutralModeValue::Brake;
-  _turnMotor.GetConfigurator().Apply(turnConfig);
+  _turnMotor.SetConversionFactor(TURNING_GEAR_RATIO);
+  _turnMotor.EnableSensorWrapping(0, 1);
+  _turnMotor.SetPIDFF(50, 0, 1);
+  _turnMotor.SetInverted(true);
+  _turnMotor.SetIdleMode(rev::CANSparkMax::IdleMode::kBrake);
 
   // Config Driving Motor
   TalonFXConfiguration driveConfig;
@@ -73,8 +64,7 @@ void SwerveModule::SetDesiredState(const frc::SwerveModuleState& referenceState)
 }
 
 frc::Rotation2d SwerveModule::GetAngle() {
-  units::radian_t turnAngle = BaseStatusSignal::GetLatencyCompensatedValue(
-      _turnMotor.GetPosition(), _turnMotor.GetVelocity());
+  units::radian_t turnAngle = _turnMotor.GetPosition();
   return turnAngle;
 }
 
@@ -97,7 +87,7 @@ frc::SwerveModuleState SwerveModule::GetState() {
 }
 
 void SwerveModule::SetDesiredAngle(units::degree_t angle) {
-  _turnMotor.SetControl(controls::PositionVoltage{angle});
+  _turnMotor.SetPositionTarget(angle);
 }
 
 void SwerveModule::SetDesiredVelocity(units::meters_per_second_t velocity) {
@@ -133,30 +123,30 @@ void SwerveModule::SendSensorsToDash() {
   std::string encoderName = "swerve/cancoder " + _cancoderID;
 
   // clang-format off
-  frc::SmartDashboard::PutNumber(  driveName + " target",   _driveMotor.GetClosedLoopReference().GetValue()    ); 
-  frc::SmartDashboard::PutNumber(  driveName + " velocity", _driveMotor.GetVelocity().GetValue().value()       ); 
-  frc::SmartDashboard::PutNumber(  driveName + " error",    _driveMotor.GetClosedLoopError().GetValue()        ); 
-  frc::SmartDashboard::PutNumber(   turnName + " target",   _turnMotor.GetClosedLoopReference().GetValue()     ); 
-  frc::SmartDashboard::PutNumber(   turnName + " position", _turnMotor.GetPosition().GetValue().value()        ); 
-  frc::SmartDashboard::PutNumber(   turnName + " error",    _turnMotor.GetClosedLoopError().GetValue()         ); 
-  frc::SmartDashboard::PutNumber(encoderName + " position", _cancoder.GetAbsolutePosition().GetValue().value() );
+  frc::SmartDashboard::PutNumber(  driveName + " target",   _driveMotor.GetClosedLoopReference().GetValue()); 
+  frc::SmartDashboard::PutNumber(  driveName + " velocity", _driveMotor.GetVelocity().GetValue().value()); 
+  frc::SmartDashboard::PutNumber(  driveName + " error",    _driveMotor.GetClosedLoopError().GetValue()); 
+  frc::SmartDashboard::PutNumber(   turnName + " target",   _turnMotor.GetPositionTarget().value()); 
+  frc::SmartDashboard::PutNumber(   turnName + " position", _turnMotor.GetPosition().value()); 
+  frc::SmartDashboard::PutNumber(   turnName + " error",    _turnMotor.GetPosError().value()); 
+  frc::SmartDashboard::PutNumber(encoderName + " position", _cancoder.GetAbsolutePosition().GetValue().value());
   // clang-format on
 }
 
 void SwerveModule::UpdateSim(units::second_t deltaTime) {
-  // Drive Motor
+  // Drive Motor (TalonFX)
   auto& driveState = _driveMotor.GetSimState();
   _driveMotorSim.SetInputVoltage(driveState.GetMotorVoltage());
   _driveMotorSim.Update(deltaTime);
   driveState.SetRawRotorPosition(_driveMotorSim.GetAngularPosition() * DRIVE_GEAR_RATIO);
   driveState.SetRotorVelocity(_driveMotorSim.GetAngularVelocity() * DRIVE_GEAR_RATIO);
 
-  // Turn Motor
-  auto& turnState = _turnMotor.GetSimState();
-  _turnMotorSim.SetInputVoltage(turnState.GetMotorVoltage());
+  // Turn Motor (Spark Max)
+  auto turnVolts = _turnMotor.GetSimVoltage();
+  _turnMotorSim.SetInputVoltage(_turnMotor.GetSimVoltage());
   _turnMotorSim.Update(deltaTime);
-  turnState.SetRawRotorPosition(_turnMotorSim.GetAngularPosition() * TURNING_GEAR_RATIO);
-  turnState.SetRotorVelocity(_turnMotorSim.GetAngularVelocity() * TURNING_GEAR_RATIO);
+  _turnMotor.UpdateSimEncoder(_turnMotorSim.GetAngularPosition(),
+                              _turnMotorSim.GetAngularVelocity());
 
   // CANcoders are attached directly to the mechanism, so don't account for the steer gearing
   auto& cancoderState = _cancoder.GetSimState();

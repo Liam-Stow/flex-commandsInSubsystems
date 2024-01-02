@@ -5,6 +5,7 @@
 #include <ctre/phoenix6/sim/CANcoderSimState.hpp>
 #include <ctre/phoenix6/sim/TalonFXSimState.hpp>
 #include <ctre/phoenix6/StatusSignal.hpp>
+#include <utilities/ICSparkMax.h>
 #include <frc/kinematics/SwerveModuleState.h>
 #include <frc/kinematics/SwerveModulePosition.h>
 #include <frc/geometry/Rotation2d.h>
@@ -45,7 +46,7 @@ class SwerveModule {
 
   // Electronics
   ctre::phoenix6::hardware::TalonFX _driveMotor;
-  ctre::phoenix6::hardware::TalonFX _turnMotor;
+  ICSparkMax _turnMotor;
   ctre::phoenix6::hardware::CANcoder _cancoder;
   
   // string versions of device ids, 
@@ -60,7 +61,7 @@ class SwerveModule {
 
   // Simulation
   frc::sim::DCMotorSim _driveMotorSim{frc::DCMotor::Falcon500(), DRIVE_GEAR_RATIO, 0.000001_kg_sq_m};
-  frc::sim::DCMotorSim _turnMotorSim{frc::DCMotor::Falcon500(), TURNING_GEAR_RATIO, 0.000000001_kg_sq_m};
+  frc::sim::DCMotorSim _turnMotorSim{frc::DCMotor::NEO(), TURNING_GEAR_RATIO, 0.000000001_kg_sq_m};
 
   // Conversions
   units::turns_per_second_t RobotVelToWheelVel(units::meters_per_second_t robotVel) {
