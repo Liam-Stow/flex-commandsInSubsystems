@@ -24,11 +24,13 @@ SwerveModule::SwerveModule(int driveMotorID, int turnMotorID, int cancoderID,
   _cancoder.GetConfigurator().Apply(cancoderConfig);
 
   // Config Turning Motor
+  _turnMotor.RestoreFactoryDefaults();
   _turnMotor.SetConversionFactor(TURNING_GEAR_RATIO);
   _turnMotor.EnableSensorWrapping(0, 1);
   _turnMotor.SetPIDFF(50, 0, 1);
   _turnMotor.SetInverted(true);
   _turnMotor.SetIdleMode(rev::CANSparkMax::IdleMode::kBrake);
+  _turnMotor.BurnFlash();
 
   // Config Driving Motor
   TalonFXConfiguration driveConfig;
